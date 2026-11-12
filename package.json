@@ -1,0 +1,8 @@
+{
+  "name": "one-pixel-one-vote",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/aggregation.test.cjs",
+    "start": "python3 -m http.server 8000 --directory dist"
+  }
+}
