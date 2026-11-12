@@ -1,12 +1,14 @@
-# 1 Pixel 1 Vote
+# 1pixel1vote
 
-An interactive map of the 2026 British Columbia provincial election. It groups valid votes by riding and party, then places the resulting groups near populated areas. The map is a visualisation of riding totals: point locations and neighbourhood party patterns are illustrative, not voter addresses or local election results.
+1pixel1vote explores election results through pixels. The first dataset covers the 2026 British Columbia provincial election; the project is intended to grow beyond that election and geography.
+
+The map places pixels near populated areas to visualise election results. Locations and neighbourhood party patterns are illustrative, not voter addresses or local election results.
 
 ## How it works
 
-At the closest zoom, one pixel represents one vote. At each wider integer zoom level, the target group size doubles (1, 2, 4, 8, and so on). The pixel-density control reduces the target group size to show more pixels where space allows; a grey pixel indicates groups that still overlap. Groups are built from the exact riding and party totals before any coordinates are selected. The final group for a party in a riding can be smaller than the target size.
+At the closest zoom, one pixel represents one vote. At each wider integer zoom level, the target number of votes per pixel doubles (1, 2, 4, 8, and so on). The pixel-density control reduces the target to show more pixels where space allows. Votes are counted by riding and party before coordinates are selected. A party's last pixel in a riding can represent fewer votes than the target.
 
-For performance, grouped views use at least two votes per full group until the closest zoom. The map samples candidate positions within the riding from population-guided coordinates. Those positions are illustrative and do not change the votes in a group. When separate groups land on the same screen pixel, that pixel is grey; hover to inspect the groups. Party colours are never blended. Population estimates guide placement but do not guarantee that every rendered pixel is on land.
+The map samples candidate positions within each riding from population-guided coordinates. Those positions are illustrative and do not change the votes represented. When pixels overlap on screen, the result is grey; hover to inspect the counts. Party colours are never blended. Population estimates guide placement but do not guarantee that every rendered pixel is on land.
 
 ## Run and test
 
@@ -18,16 +20,20 @@ python3 -m http.server 8000 --directory dist
 
 Open `http://localhost:8000/`. The map and its basemap require network access for Leaflet and OpenStreetMap tiles. A current browser with WebGL, Web Workers and `DecompressionStream` support is required.
 
-Run the grouping and collision tests with Node.js:
+Run the aggregation and collision tests with Node.js:
 
 ```sh
 node --test test/aggregation.test.cjs
 ```
 
-## Data
+## First dataset: British Columbia, 2026
 
 - [Elections BC final 2026 election results](https://results.elections.bc.ca/) — valid votes by riding and candidate.
 - [Elections BC spatial data](https://www3.elections.bc.ca/resources/maps/gis-spatial-data/) — 2023 electoral district boundaries used in the election.
 - [WorldPop 2025 Canada population estimates](https://hub.worldpop.org/geodata/summary?id=72815) — approximately 100 m constrained population grid used to guide locations.
 
 The packaged result and boundary files are snapshots. Rejected ballots are not included. One compressed file contains the riding ID of each coordinate; the eight vote files are consecutive chunks of a single gzip stream. The app checks that the coordinate and riding counts match the published election total before displaying them.
+
+## Deployment
+
+The GitHub Actions workflow tests the project and publishes `dist/` to GitHub Pages when Pages is enabled for the repository with **GitHub Actions** as its source. A repository administrator or maintainer must configure the custom domain in the GitHub Pages settings and point its DNS records to GitHub Pages.

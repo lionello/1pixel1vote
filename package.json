@@ -1,5 +1,5 @@
 {
-  "name": "one-pixel-one-vote",
+  "name": "1pixel1vote",
   "private": true,
   "scripts": {
     "test": "node --test test/aggregation.test.cjs",
