@@ -1,6 +1,7 @@
 /* Group exact riding/party totals before any screen coordinates are used. */
-function groupVotes(ridings, zoom) {
- const scale=4**(14-zoom),groups=[];
+function targetGroupSize(zoom, density=1) { return zoom===14?1:Math.max(2,2**(14-zoom)/density) }
+function groupVotes(ridings, zoom, density=1) {
+ const scale=targetGroupSize(zoom,density),groups=[];
  ridings.forEach((riding,r)=>riding.counts.forEach((votes,p)=>{
   for(let remaining=votes;remaining>0;remaining-=scale)groups.push({r,p,n:Math.min(scale,remaining)});
  }));
@@ -35,4 +36,4 @@ function placeGroups(groups,records,index,world,zoom){
  }
  return cells;
 }
-if(typeof module!=='undefined')module.exports={groupVotes,ridingIndex,placeGroups};
+if(typeof module!=='undefined')module.exports={targetGroupSize,groupVotes,ridingIndex,placeGroups};

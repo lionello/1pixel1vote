@@ -5,14 +5,21 @@ const zlib = require('node:zlib');
 const vm = require('node:vm');
 const path = require('node:path');
 const root = path.join(__dirname, '..', 'dist');
-const { groupVotes, ridingIndex, placeGroups } = require(path.join(root, 'aggregation.js'));
+const { targetGroupSize, groupVotes, ridingIndex, placeGroups } = require(path.join(root, 'aggregation.js'));
+
+test('the target group size doubles at each wider zoom', () => {
+  assert.deepEqual([14, 13, 12, 11, 10].map(z => targetGroupSize(z)), [1, 2, 4, 8, 16]);
+  assert.deepEqual([1, 2, 4].map(d => targetGroupSize(11, d)), [8, 4, 2]);
+  assert.equal(targetGroupSize(13, 4), 2);
+  assert.equal(targetGroupSize(14, 4), 1);
+});
 
 test('every zoom preserves exact votes by riding and party, including remainders', () => {
   const meta = JSON.parse(fs.readFileSync(path.join(root, 'meta.json')));
   const ridings = JSON.parse(fs.readFileSync(path.join(root, 'ridings.json'))).features
     .map(f => ({ counts: meta.parties.map(p => f.properties.votes[p] || 0) }));
-  for (let z = 4; z <= 14; z++) {
-    const { scale, groups } = groupVotes(ridings, z);
+  for (const density of [1, 2, 4]) for (let z = 4; z <= 14; z++) {
+    const { scale, groups } = groupVotes(ridings, z, density);
     const totals = ridings.map(() => Array(meta.parties.length).fill(0));
     for (const g of groups) {
       assert.ok(g.n >= 1 && g.n <= scale);
@@ -58,6 +65,24 @@ test('overlapping groups are grey and inspectable; filtering isolates a party', 
   send({ type: 'render', id: 2, view, zoom: 13, selected: 0 });
   rgba = new Uint8ClampedArray(messages.at(-1).pixels);
   assert.deepEqual([...rgba.slice(offset, offset + 4)], [20, 30, 40, 255]);
+});
+
+test('changing density at the same zoom rebuilds the groups', () => {
+  const messages = [];
+  const context = { Uint8ClampedArray, Uint32Array, Uint8Array, Float32Array, Math, Number, Map, Error,
+    self: { postMessage: m => messages.push(m) } };
+  vm.createContext(context);
+  context.importScripts = () => vm.runInContext(fs.readFileSync(path.join(root, 'aggregation.js'), 'utf8'), context);
+  vm.runInContext(fs.readFileSync(path.join(root, 'aggregate-worker.js'), 'utf8'), context);
+  const send = data => context.self.onmessage({ data });
+  const votes = new Float32Array([-0.5, 0.5, 0, -0.4, 0.5, 0, -0.3, 0.5, 0, -0.2, 0.5, 0]);
+  send({ type: 'init', votes: votes.buffer, ridingIds: new Uint8Array([0, 0, 0, 0]).buffer,
+    colors: [[20, 30, 40]], parties: ['A'], ridings: [{ name: 'One', counts: [4] }] });
+  const view = { x: 0, y: 0, width: 256, height: 256, world: 256 };
+  send({ type: 'render', id: 1, view, zoom: 12, density: 1, selected: -1 });
+  assert.equal(messages.at(-1).visibleGroups, 1);
+  send({ type: 'render', id: 2, view, zoom: 12, density: 2, selected: -1 });
+  assert.equal(messages.at(-1).visibleGroups, 2);
 });
 
 test('the shipped population position files contain one coordinate per recorded vote', () => {

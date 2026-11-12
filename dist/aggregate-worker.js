@@ -1,5 +1,5 @@
 importScripts('aggregation.js');
-let records, colors, ridings, parties, index, cachedZoom=-1, cachedCells, lastResult, lastId, lastSelected=-1;
+let records, colors, ridings, parties, index, cachedKey='', cachedCells, lastResult, lastId, lastSelected=-1;
 self.onmessage=event=>{
  const d=event.data;
  if(d.type==='init'){
@@ -13,7 +13,7 @@ self.onmessage=event=>{
    self.postMessage({type:'inspected',id:d.id,groups})}return
  }
  if(d.type!=='render'||!records)return;
- if(cachedZoom!==d.zoom){let grouped=groupVotes(ridings,d.zoom);cachedCells=placeGroups(grouped.groups,records,index,d.view.world,d.zoom);cachedZoom=d.zoom}
+ const cacheKey=d.zoom+':'+(d.density||1);if(cachedKey!==cacheKey){let grouped=groupVotes(ridings,d.zoom,d.density||1);cachedCells=placeGroups(grouped.groups,records,index,d.view.world,d.zoom);cachedKey=cacheKey}
  const startX=Math.floor(d.view.x),startY=Math.floor(d.view.y),cols=Math.ceil(d.view.x+d.view.width-startX),rows=Math.ceil(d.view.y+d.view.height-startY),pixels=new Uint8ClampedArray(cols*rows*4);
  let stacks=0,visibleGroups=0;
  for(const [key,all] of cachedCells){const x=key%d.view.world,y=Math.floor(key/d.view.world),sx=x-startX,sy=y-startY;if(sx<0||sy<0||sx>=cols||sy>=rows)continue;
