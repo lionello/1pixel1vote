@@ -5,3 +5,5 @@
 
 
 .aggregate-readout{position:absolute;z-index:600;left:22px;bottom:94px;max-width:320px;background:#f9faf3ed;box-shadow:0 2px 15px #233c2c18;border:1px solid #dfe8de;border-radius:4px;padding:10px 13px;color:#38574a;font-size:11px;line-height:1.5;pointer-events:none}.aggregate-readout[hidden]{display:none}.aggregate-readout b{display:block;font-size:10px;letter-spacing:.08em;color:#234838}
+
+.github-link{display:grid;place-items:center;flex:none;width:44px;height:44px;color:#193632;text-decoration:none}.github-link:hover{color:#668c61}.github-link:focus-visible{outline:2px solid #36594b;outline-offset:2px}
