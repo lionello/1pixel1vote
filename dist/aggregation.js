@@ -25,12 +25,14 @@ function groupVotes(ridings,unit){
  return groups;
 }
 function randomSource(seed){let v=seed>>>0;return ()=>{v^=v<<13;v^=v>>>17;v^=v<<5;return(v>>>0)/4294967296}}
-/* Candidates are a discrete projection of population positions, plus one
-   verified interior anchor per riding. Each cell has one owner. */
+/* Shuffle the population-weighted positions before taking unique cells, so
+   a spatially ordered input cannot cut off the displayed distribution. */
 function candidateCells(records,ids,eligible,world,zoom,anchors){
- const cells=anchors.map(()=>[]),owners=new Map(),pixelScale=4194304/world,bit=1<<(zoom-6);
+ const cells=anchors.map(()=>[]),owners=new Map(),pixelScale=4194304/world,bit=1<<(zoom-6),random=randomSource(0x91aa47+zoom*1291),order=new Uint32Array(ids.length);
+ for(let i=0;i<order.length;i++)order[i]=i;
+ for(let i=order.length-1;i>0;i--){const j=Math.floor(random()*(i+1)),t=order[i];order[i]=order[j];order[j]=t}
  for(let r=0;r<anchors.length;r++){const [x,y]=anchors[r],key=y*world+x;if(owners.has(key))throw Error('Ridings share an interior pixel');owners.set(key,r);cells[r].push(key)}
- for(let i=0;i<ids.length;i++){
+ for(const i of order){
   if(!(eligible[i]&bit))continue;
   const x=Math.floor(Math.floor(Math.fround(records[i*3]+1)*2097152)/pixelScale),y=Math.floor(Math.floor(Math.fround(1-records[i*3+1])*2097152)/pixelScale),key=y*world+x,r=ids[i];
   if(!owners.has(key)){owners.set(key,r);cells[r].push(key)}

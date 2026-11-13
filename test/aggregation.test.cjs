@@ -138,3 +138,14 @@ test('individual vote data retains the exact riding and party totals',()=>{
  for(let i=0;i<ids.length;i++)totals[ids[i]][records[i*3+2]]++;
  assert.deepEqual(totals,ridings.map(r=>r.counts));
 });
+
+test('spatially sorted positions are sampled across their extent, not cut off at one edge',()=>{
+ const n=100,world=256,records=new Float32Array(n*3),ids=new Uint8Array(n),eligible=new Uint8Array(n).fill(255);
+ for(let i=0;i<n;i++){records[i*3]=((i+50+.25)/world)*2-1;records[i*3+1]=.5}
+ const anchors=[[50,64]],a=candidateCells(records,ids,eligible,world,6,anchors),b=candidateCells(records,ids,eligible,world,6,anchors);
+ assert.deepEqual(a,b,'the same zoom should use stable positions');
+ const selected=placeGroups(groupVotes([{counts:[20]}],2),a,6);
+ const xs=[...selected.keys()].map(k=>k%world);
+ assert.ok(Math.min(...xs)<75,`missing western positions: ${xs}`);
+ assert.ok(Math.max(...xs)>125,`missing eastern positions: ${xs}`);
+});

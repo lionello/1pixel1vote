@@ -1,4 +1,4 @@
-importScripts('aggregation.js?v=population-1');
+importScripts('aggregation.js?v=placement-2');
 let records,ids,eligible,colors,ridings,parties,anchors,cachedKey='',cachedCells,lastResult,lastId,lastSelected=-1,lastRounding="grey";
 function parts(group){return group.parts||[{p:group.p,n:group.n}]}
 function visibleParty(group,rounding){return group.p>=0?group.p:(rounding==='largest'?dominantParty(group):-1)}
