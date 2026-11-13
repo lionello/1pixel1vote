@@ -98,3 +98,25 @@ test('reserved anchors and sampled eligible cells have centres inside their ridi
   }
  }
 });
+
+test('remainder colour follows the selected rule, with ties grey and exact counts intact',()=>{
+ const messages=[],context={Uint8ClampedArray,Uint32Array,Uint8Array,Float32Array,Math,Number,Map,Error,self:{postMessage:m=>messages.push(m)}};
+ vm.createContext(context);context.importScripts=()=>vm.runInContext(fs.readFileSync(path.join(root,'aggregation.js'),'utf8'),context);
+ vm.runInContext(fs.readFileSync(path.join(root,'aggregate-worker.js'),'utf8'),context);
+ const send=data=>context.self.onmessage({data});
+ const votes=new Float32Array([-.5,.5,0,-.4,.5,1,-.3,.5,0]);
+ send({type:'init',votes:votes.buffer,ridingIds:new Uint8Array([0,0,0]).buffer,eligible:new Uint8Array([255,255,255]).buffer,colors:[[20,30,40],[80,90,100]],parties:['A','B'],ridings:[{name:'One',counts:[7,5]}],anchors:{12:[[64,64]]}});
+ const view={x:0,y:0,width:256,height:256,world:256};
+ function render(id,rounding,selected=-1){send({type:'render',id,view,zoom:12,selected,rounding});return new Uint8ClampedArray(messages.at(-1).pixels)}
+ function count(rgba,color){let n=0;for(let i=0;i<rgba.length;i+=4)if(rgba[i]===color[0]&&rgba[i+1]===color[1]&&rgba[i+2]===color[2]&&rgba[i+3]===255)n++;return n}
+ let pixels=render(1,'grey');assert.equal(count(pixels,[105,105,105]),1);
+ pixels=render(2,'largest');assert.equal(count(pixels,[105,105,105]),0);assert.equal(count(pixels,[20,30,40]),2);
+ const key=vm.runInContext('[...cachedCells].find(([,g])=>g.p<0)[0]',context);send({type:'inspect',id:2,x:key%256,y:Math.floor(key/256)});
+ const breakdown=JSON.parse(JSON.stringify(messages.at(-1).groups)).sort((a,b)=>a.party.localeCompare(b.party));
+ assert.deepEqual(breakdown,[{name:'One',party:'A',count:3},{name:'One',party:'B',count:1}]);
+ pixels=render(3,'largest',1);assert.equal(count(pixels,[20,30,40]),0);assert.equal(count(pixels,[80,90,100]),1);
+ const mixed=groupVotes([{counts:[7,5]}],4).find(g=>g.p<0);
+ assert.deepEqual(mixed.parts,[{p:0,n:3},{p:1,n:1}]);
+ assert.equal(vm.runInContext('dominantParty({p:-1,parts:[{p:0,n:1},{p:1,n:1}]})',context),-1);
+ assert.equal(vm.runInContext('dominantParty({p:-1,parts:[{p:0,n:1}]})',context),0);
+});

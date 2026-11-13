@@ -6,7 +6,7 @@ The map places pixels near populated areas to visualise election results. Locati
 
 ## How it works
 
-At the closest zoom, one pixel represents one vote. At wider zoom levels, every coloured pixel represents the same number of votes for one party in one riding. The number changes with zoom and the pixel-density setting; it increases when needed to fit every riding. The votes left over from each party are packed into grey pixels, which may contain votes for more than one party or fewer than the stated number. Hover to inspect their exact counts. Party colours are never blended and a pixel never combines ridings.
+At the closest zoom, one pixel represents one vote. At wider zoom levels, every coloured pixel represents the same number of votes for one party in one riding. The number changes with zoom and the pixel-density setting; it increases when needed to fit every riding. The votes left over from each party are packed into pixels that may contain votes for more than one party or fewer than the stated number. Choose whether to show these pixels in grey or colour them by the party with the largest share; ties stay grey. Hover to inspect exact counts. Party colours are never blended and a pixel never combines ridings. A separate first-past-the-post view fills each riding with its leading party’s colour.
 
 Pixels are assigned only after counting each riding's party totals. Candidate positions are drawn from population-guided coordinates whose projected pixel centres fall inside their riding, plus a verified interior anchor for each riding. The anchor is not guaranteed to meet a population threshold. Positions are illustrative and do not identify voters or describe actual neighbourhood voting patterns.
 
