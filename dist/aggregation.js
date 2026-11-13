@@ -16,23 +16,26 @@ function ridingIndex(ridingIds,ridingCount){
  return {starts,indices};
 }
 function randomSource(seed){let v=seed>>>0;return ()=>{v^=v<<13;v^=v>>>17;v^=v<<5;return (v>>>0)/4294967296}}
-/* Place groups after aggregation, sampling riding-local population positions.
-   If no free candidate is found, keep all colliding groups in a marked stack. */
-function placeGroups(groups,records,index,world,zoom){
+/* Reserve one interior cell per riding before placing any votes. */
+function placeGroups(groups,records,index,world,zoom,anchors){
  const random=randomSource(0x862f57+zoom*7919),order=new Uint32Array(groups.length);
  for(let i=0;i<order.length;i++)order[i]=i;
  for(let i=order.length-1;i>0;i--){let j=Math.floor(random()*(i+1)),v=order[i];order[i]=order[j];order[j]=v}
- const cells=new Map(),scale=world/2;
+ const cells=new Map(),owners=new Map(),anchorKeys=anchors.map(([x,y],r)=>{
+  const key=y*world+x;if(owners.has(key))throw Error('Ridings share a reserved pixel');owners.set(key,r);cells.set(key,[]);return key
+ }),seeded=new Uint8Array(anchors.length),scale=world/2;
  for(const g of order){const group=groups[g],start=index.starts[group.r],length=index.starts[group.r+1]-start;
   if(!length)throw Error('Riding has votes but no population positions');
-  let key=0,first=0;
+  if(!seeded[group.r]){cells.get(anchorKeys[group.r]).push(group);seeded[group.r]=1;continue}
+  let key=anchorKeys[group.r],sameRiding=null,sameParty=null;
   for(let attempt=0;attempt<16;attempt++){
    const k=index.indices[start+Math.floor(random()*length)]*3;
-   const x=Math.floor((records[k]+1)*scale),y=Math.floor((1-records[k+1])*scale);
-   key=y*world+x;if(attempt===0)first=key;if(!cells.has(key))break;
-   if(attempt===15)key=first;
+   const x=Math.floor((records[k]+1)*scale),y=Math.floor((1-records[k+1])*scale),candidate=y*world+x;
+   if(!owners.has(candidate)){key=candidate;owners.set(key,group.r);cells.set(key,[]);sameRiding=null;sameParty=null;break}
+   if(owners.get(candidate)===group.r){sameRiding=candidate;if(cells.get(candidate).some(item=>item.p===group.p))sameParty=candidate}
   }
-  let cell=cells.get(key);if(!cell){cell=[];cells.set(key,cell)}cell.push(group);
+  if(sameParty!==null)key=sameParty;else if(sameRiding!==null)key=sameRiding;
+  cells.get(key).push(group);
  }
  return cells;
 }

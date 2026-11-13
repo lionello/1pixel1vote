@@ -8,7 +8,7 @@ The map places pixels near populated areas to visualise election results. Locati
 
 At the closest zoom, one pixel represents one vote. At each wider integer zoom level, the target number of votes per pixel doubles (1, 2, 4, 8, and so on). The pixel-density control reduces the target to show more pixels where space allows. Votes are counted by riding and party before coordinates are selected. A party's last pixel in a riding can represent fewer votes than the target.
 
-The map samples candidate positions within each riding from population-guided coordinates. Those positions are illustrative and do not change the votes represented. When pixels overlap on screen, the result is grey; hover to inspect the counts. Party colours are never blended. Population estimates guide placement but do not guarantee that every rendered pixel is on land.
+The map samples candidate positions within each riding from population-guided coordinates. Those positions are illustrative and do not change the votes represented. Every pixel is reserved for one riding, including when several vote counts share a position. Pixels representing multiple parties are grey; hover to inspect their counts. The target votes per pixel can be exceeded where space is limited. Party colours are never blended. Population estimates guide placement but do not guarantee that every rendered pixel is on land.
 
 ## Run and test
 
