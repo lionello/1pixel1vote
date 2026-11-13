@@ -11,8 +11,10 @@ ids = gzip.decompress((root / 'riding-ids.gz').read_bytes())
 votes = gzip.decompress(b''.join((root / f'votes-{i:02}.gz').read_bytes() for i in range(8)))
 samples = [[] for _ in features]
 for (x, y, _), riding in zip(struct.iter_unpack('<fff', votes), ids):
-    if len(samples[riding]) < 500:
-        samples[riding].append((x, y))
+    samples[riding].append((x, y))
+
+def f32(value):
+    return struct.unpack("<f", struct.pack("<f", value))[0]
 
 def projected(p, world):
     lon, lat = p[:2]
@@ -42,23 +44,10 @@ for zoom in range(6, 15):
         polygons = [[[projected(p, world) for p in ring] for ring in poly] for poly in polygons]
         chosen = None
         for x, y in positions:
-            cell = (math.floor((x + 1) * world / 2), math.floor((1 - y) * world / 2))
+            cell = (math.floor(math.floor(f32(x + 1) * 2097152) / 2 ** (14 - zoom)), math.floor(math.floor(f32(1 - y) * 2097152) / 2 ** (14 - zoom)))
             if cell not in used and contains(polygons, cell[0] + .5, cell[1] + .5):
                 chosen = cell
                 break
-        if chosen is None and zoom == 14:
-            raise ValueError(f'No interior vote pixel for {feature["properties"]["name"]} at closest zoom')
-        if chosen is None:
-            for poly in polygons:
-                xs = [p[0] for p in poly[0]]
-                ys = [p[1] for p in poly[0]]
-                for y in range(math.ceil(min(ys) - .5), math.floor(max(ys) - .5) + 1):
-                    for x in range(math.ceil(min(xs) - .5), math.floor(max(xs) - .5) + 1):
-                        if (x, y) not in used and contains(polygons, x + .5, y + .5):
-                            chosen = (x, y)
-                            break
-                    if chosen: break
-                if chosen: break
         if chosen is None:
             raise ValueError(f'No unique interior pixel for {feature["properties"]["name"]} at zoom {zoom}')
         used.add(chosen)

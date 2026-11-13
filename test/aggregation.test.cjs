@@ -93,7 +93,7 @@ test('reserved anchors and sampled eligible cells have centres inside their ridi
    assert.ok(contains(features[r].geometry,...point),`anchor outside riding ${r} at ${z}`);
   }
   for(let i=0;i<ids.length;i+=7919){if(!(eligible[i]&(1<<(z-6))))continue;
-   const x=Math.floor((records[i*3]+1)*world/2),y=Math.floor((1-records[i*3+1])*world/2),point=lonlat(x,y,world);
+   const x=Math.floor(Math.floor(Math.fround(records[i*3]+1)*2097152)/2**(14-z)),y=Math.floor(Math.floor(Math.fround(1-records[i*3+1])*2097152)/2**(14-z)),point=lonlat(x,y,world);
    assert.ok(contains(features[ids[i]].geometry,...point),`candidate outside riding ${ids[i]} at ${z}`);
   }
  }
@@ -119,4 +119,22 @@ test('remainder colour follows the selected rule, with ties grey and exact count
  assert.deepEqual(mixed.parts,[{p:0,n:3},{p:1,n:1}]);
  assert.equal(vm.runInContext('dominantParty({p:-1,parts:[{p:0,n:1},{p:1,n:1}]})',context),-1);
  assert.equal(vm.runInContext('dominantParty({p:-1,parts:[{p:0,n:1}]})',context),0);
+});
+
+test('every reserved anchor originates from an eligible populated position',()=>{
+ for(let z=6;z<14;z++){
+  const world=256*2**z,wanted=new Set(anchors[z].map(([x,y],r)=>`${r}:${y*world+x}`));
+  for(let i=0;i<ids.length&&wanted.size;i++){
+   if(!(eligible[i]&(1<<(z-6))))continue;
+   const x=Math.floor(Math.floor(Math.fround(records[i*3]+1)*2097152)/2**(14-z));
+   const y=Math.floor(Math.floor(Math.fround(1-records[i*3+1])*2097152)/2**(14-z));
+   wanted.delete(`${ids[i]}:${y*world+x}`);
+  }
+  assert.equal(wanted.size,0,`unpopulated anchors at zoom ${z}`);
+ }
+});
+test('individual vote data retains the exact riding and party totals',()=>{
+ const totals=ridings.map(()=>Array(meta.parties.length).fill(0));
+ for(let i=0;i<ids.length;i++)totals[ids[i]][records[i*3+2]]++;
+ assert.deepEqual(totals,ridings.map(r=>r.counts));
 });

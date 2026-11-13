@@ -1,8 +1,7 @@
 """Mark population-guided positions whose pixel centres remain in their riding.
 
 Requires numpy and shapely. Writes one bit per aggregated zoom and vote position.
-The base positions themselves are already population-guided; this does not impose
-an additional population-density threshold.
+The base positions have already been checked against the population threshold.
 """
 import gzip
 import json
@@ -23,8 +22,10 @@ for r, feature in enumerate(features):
     x, y = points[idx, 0].astype(np.float64), points[idx, 1].astype(np.float64)
     for z in range(6, 14):
         world = 256 * 2 ** z
-        px = np.floor((x + 1) * world / 2) + .5
-        py = np.floor((1 - y) * world / 2) + .5
+        full_x = np.floor((x.astype(np.float32) + np.float32(1)) * np.float32(2097152))
+        full_y = np.floor((np.float32(1) - y.astype(np.float32)) * np.float32(2097152))
+        px = np.floor(full_x / 2 ** (14 - z)) + .5
+        py = np.floor(full_y / 2 ** (14 - z)) + .5
         lon = px / world * 360 - 180
         lat = np.degrees(np.arctan(np.sinh(np.pi * (1 - 2 * py / world))))
         flags[idx] |= shapely.contains_xy(geo, lon, lat).astype(np.uint8) << (z - 6)

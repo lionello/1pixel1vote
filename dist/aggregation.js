@@ -28,11 +28,11 @@ function randomSource(seed){let v=seed>>>0;return ()=>{v^=v<<13;v^=v>>>17;v^=v<<
 /* Candidates are a discrete projection of population positions, plus one
    verified interior anchor per riding. Each cell has one owner. */
 function candidateCells(records,ids,eligible,world,zoom,anchors){
- const cells=anchors.map(()=>[]),owners=new Map(),scale=world/2,bit=1<<(zoom-6);
+ const cells=anchors.map(()=>[]),owners=new Map(),pixelScale=4194304/world,bit=1<<(zoom-6);
  for(let r=0;r<anchors.length;r++){const [x,y]=anchors[r],key=y*world+x;if(owners.has(key))throw Error('Ridings share an interior pixel');owners.set(key,r);cells[r].push(key)}
  for(let i=0;i<ids.length;i++){
   if(!(eligible[i]&bit))continue;
-  const x=Math.floor((records[i*3]+1)*scale),y=Math.floor((1-records[i*3+1])*scale),key=y*world+x,r=ids[i];
+  const x=Math.floor(Math.floor(Math.fround(records[i*3]+1)*2097152)/pixelScale),y=Math.floor(Math.floor(Math.fround(1-records[i*3+1])*2097152)/pixelScale),key=y*world+x,r=ids[i];
   if(!owners.has(key)){owners.set(key,r);cells[r].push(key)}
  }
  return cells;
