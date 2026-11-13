@@ -1,42 +1,47 @@
-/* Group exact riding/party totals before any screen coordinates are used. */
-function targetGroupSize(zoom, density=1) { return zoom===14?1:Math.max(2,2**(14-zoom)/density) }
-function groupVotes(ridings, zoom, density=1) {
- const scale=targetGroupSize(zoom,density),groups=[];
- ridings.forEach((riding,r)=>riding.counts.forEach((votes,p)=>{
-  for(let remaining=votes;remaining>0;remaining-=scale)groups.push({r,p,n:Math.min(scale,remaining)});
- }));
- return {scale,groups};
+/* Aggregation is based on riding and party totals; placement follows afterwards. */
+function targetGroupSize(zoom,density=1){return zoom===14?1:Math.max(2,2**(14-zoom)/density)}
+function pixelCount(counts,unit){let whole=0,remainder=0;for(const n of counts){whole+=Math.floor(n/unit);remainder+=n%unit}return whole+Math.ceil(remainder/unit)}
+function chooseUnit(ridings,capacities,zoom,density=1){
+ let unit=targetGroupSize(zoom,density);
+ while(ridings.some((r,i)=>pixelCount(r.counts,unit)>capacities[i])){
+  if(unit>2**30)throw Error('Not enough eligible pixels for all ridings');unit*=2;
+ }
+ return unit;
 }
-function ridingIndex(ridingIds,ridingCount){
- const starts=new Uint32Array(ridingCount+1);
- for(const r of ridingIds){if(r>=ridingCount)throw Error('Invalid riding in vote data');starts[r+1]++}
- for(let i=1;i<starts.length;i++)starts[i]+=starts[i-1];
- const next=starts.slice(),indices=new Uint32Array(ridingIds.length);
- for(let i=0;i<ridingIds.length;i++)indices[next[ridingIds[i]]++]=i;
- return {starts,indices};
+function groupVotes(ridings,unit){
+ const groups=[];
+ ridings.forEach((riding,r)=>{
+  const remainders=[];
+  riding.counts.forEach((votes,p)=>{
+   const full=Math.floor(votes/unit);for(let i=0;i<full;i++)groups.push({r,p,n:unit});
+   if(votes%unit)remainders.push({p,n:votes%unit});
+  });
+  let parts=[],remaining=unit;
+  for(const item of remainders){let n=item.n;while(n){const take=Math.min(n,remaining);parts.push({p:item.p,n:take});remaining-=take;n-=take;
+   if(!remaining){groups.push({r,p:-1,n:unit,parts});parts=[];remaining=unit}
+  }}
+  if(parts.length)groups.push({r,p:-1,n:unit-remaining,parts});
+ });
+ return groups;
 }
-function randomSource(seed){let v=seed>>>0;return ()=>{v^=v<<13;v^=v>>>17;v^=v<<5;return (v>>>0)/4294967296}}
-/* Reserve one interior cell per riding before placing any votes. */
-function placeGroups(groups,records,index,world,zoom,anchors){
- const random=randomSource(0x862f57+zoom*7919),order=new Uint32Array(groups.length);
- for(let i=0;i<order.length;i++)order[i]=i;
- for(let i=order.length-1;i>0;i--){let j=Math.floor(random()*(i+1)),v=order[i];order[i]=order[j];order[j]=v}
- const cells=new Map(),owners=new Map(),anchorKeys=anchors.map(([x,y],r)=>{
-  const key=y*world+x;if(owners.has(key))throw Error('Ridings share a reserved pixel');owners.set(key,r);cells.set(key,[]);return key
- }),seeded=new Uint8Array(anchors.length),scale=world/2;
- for(const g of order){const group=groups[g],start=index.starts[group.r],length=index.starts[group.r+1]-start;
-  if(!length)throw Error('Riding has votes but no population positions');
-  if(!seeded[group.r]){cells.get(anchorKeys[group.r]).push(group);seeded[group.r]=1;continue}
-  let key=anchorKeys[group.r],sameRiding=null,sameParty=null;
-  for(let attempt=0;attempt<16;attempt++){
-   const k=index.indices[start+Math.floor(random()*length)]*3;
-   const x=Math.floor((records[k]+1)*scale),y=Math.floor((1-records[k+1])*scale),candidate=y*world+x;
-   if(!owners.has(candidate)){key=candidate;owners.set(key,group.r);cells.set(key,[]);sameRiding=null;sameParty=null;break}
-   if(owners.get(candidate)===group.r){sameRiding=candidate;if(cells.get(candidate).some(item=>item.p===group.p))sameParty=candidate}
-  }
-  if(sameParty!==null)key=sameParty;else if(sameRiding!==null)key=sameRiding;
-  cells.get(key).push(group);
+function randomSource(seed){let v=seed>>>0;return ()=>{v^=v<<13;v^=v>>>17;v^=v<<5;return(v>>>0)/4294967296}}
+/* Candidates are a discrete projection of population positions, plus one
+   verified interior anchor per riding. Each cell has one owner. */
+function candidateCells(records,ids,eligible,world,zoom,anchors){
+ const cells=anchors.map(()=>[]),owners=new Map(),scale=world/2,bit=1<<(zoom-6);
+ for(let r=0;r<anchors.length;r++){const [x,y]=anchors[r],key=y*world+x;if(owners.has(key))throw Error('Ridings share an interior pixel');owners.set(key,r);cells[r].push(key)}
+ for(let i=0;i<ids.length;i++){
+  if(!(eligible[i]&bit))continue;
+  const x=Math.floor((records[i*3]+1)*scale),y=Math.floor((1-records[i*3+1])*scale),key=y*world+x,r=ids[i];
+  if(!owners.has(key)){owners.set(key,r);cells[r].push(key)}
  }
  return cells;
 }
-if(typeof module!=='undefined')module.exports={targetGroupSize,groupVotes,ridingIndex,placeGroups};
+function placeGroups(groups,candidates,zoom){
+ const random=randomSource(0x862f57+zoom*7919),order=new Uint32Array(groups.length),offsets=new Uint32Array(candidates.length),cells=new Map();
+ for(let i=0;i<order.length;i++)order[i]=i;
+ for(let i=order.length-1;i>0;i--){const j=Math.floor(random()*(i+1)),v=order[i];order[i]=order[j];order[j]=v}
+ for(const i of order){const group=groups[i],positions=candidates[group.r],offset=offsets[group.r]++;if(offset>=positions.length)throw Error('Not enough eligible pixels');cells.set(positions[offset],group)}
+ return cells;
+}
+if(typeof module!=='undefined')module.exports={targetGroupSize,pixelCount,chooseUnit,groupVotes,candidateCells,placeGroups};
